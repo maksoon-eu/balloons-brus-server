@@ -6,16 +6,19 @@ module.exports = function(duration) {
     return function (req, res, next) {
         const key = req.originalUrl
         const cacheResponse = cache.get(key)
-    
-        if (cacheResponse) {
-            res.send(cacheResponse)
-        } else {
-            res.originalSend = res.send
-            res.send = body => {
-                res.originalSend(body)
-                cache.set(key, body, duration)
+        const token = req.headers.authorization
+        console.log(req.headers.authorization)
+        if (!token) {
+            if (cacheResponse) {
+                res.send(cacheResponse)
+            } else {
+                res.originalSend = res.send
+                res.send = body => {
+                    res.originalSend(body)
+                    cache.set(key, body, duration)
+                }
+                next()
             }
-            next()
         }
     }
 }

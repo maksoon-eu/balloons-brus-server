@@ -1,6 +1,7 @@
 const uuid = require('uuid')
 const path = require('path')
 const fs = require('fs');
+const { Op } = require('sequelize')
 const {Item} = require('../models/models')
 const ApiError = require('../error/ApiError')
 
@@ -8,7 +9,6 @@ class ItemController {
     async create(req, res, next) {
         try {
             const {name, price, description, typeId, subTypeId} = req.body
-            console.log(req.body)
             const {img} = req.files
             let fileName = uuid.v4() + '.jpg'
 
@@ -22,16 +22,21 @@ class ItemController {
     }
 
     async getAll(req, res) {
-        let {typeId, subTypeId, limit, page} = req.query
+        let {typeId, subTypeId, price, limit, page} = req.query
         page = page || 1
         limit = limit || 5
         let offset = page * limit - limit
         let items;
-        if (typeId && subTypeId) {
+        if (typeId && subTypeId && price) {
+            items = await Item.findAndCountAll({where : {typeId, subTypeId, price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset})
+        } else if (typeId && subTypeId) {
             items = await Item.findAndCountAll({where : {typeId, subTypeId}, limit, offset})
+        } else if (price) {
+            items = await Item.findAndCountAll({where : {price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset})
         } else {
             items = await Item.findAndCountAll({limit, offset})
         }
+
         return res.json(items)
     }
 
