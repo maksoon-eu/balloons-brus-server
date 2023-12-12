@@ -13,12 +13,14 @@ const Item = sequelize.define('item', {
 
 const Type = sequelize.define('type', {
     id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-    name: {type: DataTypes.STRING, unique: true, allowNull: false}
+    name: {type: DataTypes.STRING, unique: true, allowNull: false},
+    // hide: {type: DataTypes.BOOLEAN, defaultValue: false}
 });
 
 const SubType = sequelize.define('sub_type', {
     id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-    name: {type: DataTypes.STRING, unique: true, allowNull: false}
+    name: {type: DataTypes.STRING, unique: true, allowNull: false},
+    // hide: {type: DataTypes.BOOLEAN, defaultValue: false}
 })
 
 const Review = sequelize.define('review', {

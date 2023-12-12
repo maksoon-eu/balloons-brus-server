@@ -22,19 +22,29 @@ class ItemController {
     }
 
     async getAll(req, res) {
-        let {typeId, subTypeId, price, limit, page} = req.query
+        let {typeId, subTypeId, price, limit, page, sort} = req.query
         page = page || 1
         limit = limit || 5
+        sort = sort || ["updatedAt", "DESC"]
         let offset = page * limit - limit
         let items;
         if (typeId && subTypeId && price) {
-            items = await Item.findAndCountAll({where : {typeId, subTypeId, price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset})
+            items = await Item.findAndCountAll({
+                where : {typeId, subTypeId, 
+                    price: {[Op.between]: [+price.priceLow, +price.priceMax]}
+                }, 
+                limit, offset, 
+                order: [sort]
+            })
         } else if (typeId && subTypeId) {
-            items = await Item.findAndCountAll({where : {typeId, subTypeId}, limit, offset})
+            items = await Item.findAndCountAll({where : {typeId, subTypeId}, limit, offset, order: [sort]})
         } else if (price) {
-            items = await Item.findAndCountAll({where : {price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset})
+            items = await Item.findAndCountAll({
+                where : {price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset, 
+                order: [sort]
+            })
         } else {
-            items = await Item.findAndCountAll({limit, offset})
+            items = await Item.findAndCountAll({limit, offset, order: [sort]})
         }
 
         return res.json(items)
