@@ -62,10 +62,10 @@ class ItemController {
             const {id} = req.params
 
             const prevItem = await Item.findOne({where: {id}})
-            fs.unlinkSync(`${__dirname}/../static/${prevItem.img}`)
 
             let item;
             if (req.files) {
+                fs.unlinkSync(`${__dirname}/../static/${prevItem.img}`)
                 const {img} = req.files
                 let fileName = uuid.v4() + '.jpg'
                 img.mv(path.resolve(__dirname, '..', 'static', fileName))
@@ -77,6 +77,7 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
+            console.log(e)
             next(ApiError.badRequest(e.message))
         }
     }
