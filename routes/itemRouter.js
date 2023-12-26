@@ -7,6 +7,7 @@ const cacheMiddleware = require('../middleware/cacheMiddleware')
 
 router.post('/', checkRoleMiddleware('ADMIN'), itemController.create)
 router.get('/', itemController.getAll)
+router.get('/ids', itemController.getForIds)
 router.get('/:id', itemController.getOne)
 router.put('/:id', checkRoleMiddleware('ADMIN'), itemController.change)
 router.delete('/:id', checkRoleMiddleware('ADMIN'), itemController.delete)

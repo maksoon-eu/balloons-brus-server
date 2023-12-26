@@ -17,7 +17,6 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            console.log(e)
             next(ApiError.badRequest(e.message))
         }
     }
@@ -48,6 +47,13 @@ class ItemController {
             items = await Item.findAndCountAll({limit, offset, order: [sort]})
         }
 
+        return res.json(items)
+    }
+
+    async getForIds(req, res) {
+        const {ids} = req.query
+
+        const items = await Item.findAll({where: {id: {[Op.or]: ids}}})
         return res.json(items)
     }
 
