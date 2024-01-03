@@ -1,6 +1,6 @@
-const {Type, SubType, Item, SliderType} = require('../models/models')
+const {Type, SubType, Item, SliderType} = require('../models/models');
 const fs = require('fs');
-const ApiError = require('../error/ApiError')
+const ApiError = require('../error/ApiError');
 
 class TypeController {
     async create(req, res) {

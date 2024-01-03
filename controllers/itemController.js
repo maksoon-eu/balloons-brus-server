@@ -1,9 +1,9 @@
-const uuid = require('uuid')
-const path = require('path')
+const uuid = require('uuid');
+const path = require('path');
 const fs = require('fs');
-const { Op } = require('sequelize')
-const {Item} = require('../models/models')
-const ApiError = require('../error/ApiError')
+const { Op } = require('sequelize');
+const {Item} = require('../models/models');
+const ApiError = require('../error/ApiError');
 
 class ItemController {
     async create(req, res, next) {
@@ -83,7 +83,6 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            console.log(e)
             next(ApiError.badRequest(e.message))
         }
     }

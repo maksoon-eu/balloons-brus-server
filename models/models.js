@@ -8,19 +8,18 @@ const Item = sequelize.define('item', {
     img: {type: DataTypes.STRING, allowNull: false},
     description: {type: DataTypes.STRING},
     typeId: {type: DataTypes.INTEGER, allowNull: false},
+    available: {type: DataTypes.BOOLEAN, defaultValue: true},
     subTypeId: {type: DataTypes.INTEGER, allowNull: false}
 });
 
 const Type = sequelize.define('type', {
     id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-    name: {type: DataTypes.STRING, unique: true, allowNull: false},
-    // hide: {type: DataTypes.BOOLEAN, defaultValue: false}
+    name: {type: DataTypes.STRING, unique: true, allowNull: false}
 });
 
 const SubType = sequelize.define('sub_type', {
     id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-    name: {type: DataTypes.STRING, unique: true, allowNull: false},
-    // hide: {type: DataTypes.BOOLEAN, defaultValue: false}
+    name: {type: DataTypes.STRING, unique: true, allowNull: false}
 })
 
 const Review = sequelize.define('review', {

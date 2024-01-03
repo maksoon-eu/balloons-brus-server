@@ -1,5 +1,5 @@
 const axios = require('axios');
-const ApiError = require('../error/ApiError')
+const ApiError = require('../error/ApiError');
 
 class OrderController {
     async sendOrder(req, res, next) {
