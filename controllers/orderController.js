@@ -34,6 +34,29 @@ class OrderController {
             next(ApiError.badRequest(e.message))
         }
     };
+
+    async sendMessage(req, res, next) {
+        try {
+            let message = '';
+            const order = req.body;
+            
+            message += `Имя: ${order.name}\n`;
+            message += `Номер телефона: ${order.tel}\n`;
+            message += `Комментарий к заказу: ${order.comment}\n\n`;
+
+            const telegramUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`;
+            const telegramParams = {
+                chat_id: process.env.CHAT_ID,
+                text: message,
+            };
+
+            await axios.post(telegramUrl, telegramParams);
+
+            return res.json({ message: 'Сообщение успешно отправлено в Telegram' })
+        } catch(e) {
+            next(ApiError.badRequest(e.message))
+        }
+    };
 }
 
 module.exports = new OrderController()
