@@ -8,11 +8,8 @@ const fileUpload = require('express-fileupload')
 const router = require('./routes/index')
 const errorHandler = require('./middleware/ErrorHandingMiddleware')
 const path = require('path')
-// const fs = require('fs')
-// const http = require('http')
-// const https = require('https')
-// const privateKey  = fs.readFileSync('sslcert/server.key', 'utf8')
-// const certificate = fs.readFileSync('sslcert/server.crt', 'utf8')
+const fs = require('fs')
+const https = require('https')
 
 const PORT = process.env.PORT || 5001
 
@@ -23,7 +20,10 @@ const limiter = rateLimit({
 	legacyHeaders: false
 })
 
-// const credentials = {key: privateKey, cert: certificate};
+const options = {
+    key: fs.readFileSync(path.resolve(__dirname,('sslcert/key.pem'))),
+    cert: fs.readFileSync(path.resolve(__dirname,('sslcert/fullchain.pem')))
+}
 
 const app = express()
 app.use(helmet());
@@ -36,15 +36,13 @@ app.use('/api', router)
 
 app.use(errorHandler)
 
-// const httpServer = http.createServer(app);
-// const httpsServer = https.createServer(credentials, app);
+const httpsServer = https.createServer(options, app);
 
 const start = async () => {
     try {
         await sequelize.authenticate()
         await sequelize.sync()
-        // httpServer.listen(PORT, () => console.log(`Server started on port ${PORT}`))
-        app.listen(PORT, () => console.log(`Server started on port ${PORT}`))
+        httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`))
     } catch (e) {
         console.log(e)
     }

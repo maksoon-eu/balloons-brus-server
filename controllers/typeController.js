@@ -61,6 +61,7 @@ class TypeController {
     async changeSliderType(req, res) {
         const {id} = req.params
         const {typeId, subTypeId} = req.body
+        console.log(typeId, subTypeId)
 
         const sliderType = await SliderType.update({typeId, subTypeId}, {where: {id}})
 
