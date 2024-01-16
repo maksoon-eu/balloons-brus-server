@@ -1,5 +1,5 @@
 const uuid = require('uuid');
-const sharp = require('sharp11');
+const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 const { Op } = require('sequelize');
@@ -16,7 +16,7 @@ class ItemController {
             
             const fileName = uuid.v4();
             
-            const fileExtension = img.name.split('.').pop().toLowerCase();
+            let fileExtension = img.name.split('.').pop().toLowerCase();
             const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
 
             if (!allowedExtensions.includes(fileExtension)) {
@@ -38,6 +38,7 @@ class ItemController {
                     .toFormat('jpeg')
                     .jpeg({ quality: 90 })
                     .toBuffer();
+                fileExtension = 'jpeg';
             }
 
             const item = await Item.create({
@@ -53,6 +54,7 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
+            console.log(e)
             next(ApiError.badRequest(e.message))
         }
     }
