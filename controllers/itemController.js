@@ -111,10 +111,37 @@ class ItemController {
             if (req.files) {
                 fs.unlinkSync(`${__dirname}/../static/${prevItem.img}`)
                 const {img} = req.files
-                let fileName = uuid.v4() + '.jpg'
-                img.mv(path.resolve(__dirname, '..', 'static', fileName))
+                
+                const fileName = uuid.v4();
+            
+                let fileExtension = img.name.split('.').pop().toLowerCase();
+                const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
 
-                item = await Item.update({...req.body, img: fileName}, {where: {id}})
+                if (!allowedExtensions.includes(fileExtension)) {
+                    throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
+                }
+
+                let imageBuffer;
+
+                if (fileExtension === 'heic') {
+                    const { data } = await heicConvert({
+                        buffer: img.data,
+                        format: 'jpeg',
+                        quality: 90,
+                    });
+                    imageBuffer = data;
+                    fileExtension = 'jpeg';
+                } else {
+                    imageBuffer = await sharp(img.data)
+                        .toFormat('jpeg')
+                        .jpeg({ quality: 90 })
+                        .toBuffer();
+                    fileExtension = 'jpeg';
+                }
+
+                item = await Item.update({...req.body, img: `${fileName}.${fileExtension}`}, {where: {id}})
+                
+                fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
             } else {
                 item = await Item.update({...req.body}, {where: {id}})
             }

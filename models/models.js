@@ -32,6 +32,11 @@ const Work = sequelize.define('work', {
     img: {type: DataTypes.STRING, allowNull: false}
 });
 
+const Slider = sequelize.define('slider', {
+    id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+    img: {type: DataTypes.STRING, allowNull: false}
+});
+
 const User = sequelize.define('user', {
     id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
     login: {type: DataTypes.STRING, unique: true},
@@ -58,5 +63,6 @@ module.exports = {
     Work,
     User,
     SubType,
+    Slider,
     SliderType
 }
