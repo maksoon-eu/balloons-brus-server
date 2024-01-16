@@ -1,19 +1,51 @@
 const uuid = require('uuid');
+const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 const { Op } = require('sequelize');
 const {Item} = require('../models/models');
 const ApiError = require('../error/ApiError');
+const { convert } = require('heic-convert');
 
 class ItemController {
     async create(req, res, next) {
         try {
             const {name, price, description, typeId, subTypeId} = req.body
-            const {img} = req.files
-            let fileName = uuid.v4() + '.jpg'
 
-            const item = await Item.create({name, price, description, typeId, subTypeId, img: fileName})
-            img.mv(path.resolve(__dirname, '..', 'static', fileName))
+            const {img} = req.files
+            
+            const fileName = uuid.v4();
+            
+            const fileExtension = img.name.split('.').pop().toLowerCase();
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
+
+            if (!allowedExtensions.includes(fileExtension)) {
+                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
+            }
+
+            let imageBuffer;
+
+            if (fileExtension === 'heic') {
+                const { data, mimeType } = await convert({ buffer: img.data });
+                imageBuffer = data;
+                fileExtension = 'jpeg';
+            } else {
+                imageBuffer = await sharp(img.data)
+                    .toFormat('jpeg')
+                    .jpeg({ quality: 90 })
+                    .toBuffer();
+            }
+
+            const item = await Item.create({
+                name,
+                price,
+                description,
+                typeId,
+                subTypeId,
+                img: `${fileName}.${fileExtension}`,
+            });
+
+            fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
 
             return res.json(item)
         } catch(e) {
