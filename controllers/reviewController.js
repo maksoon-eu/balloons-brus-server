@@ -1,9 +1,9 @@
 const {Review} = require('../models/models');
 const fs = require('fs');
 const uuid = require('uuid');
-const sharp = require('sharp');
+const sharp = require('sharp11');
 const path = require('path');
-const { convert } = require('heic-convert');
+const heicConvert = require('heic-convert');
 const ApiError = require('../error/ApiError');
 
 class ReviewController {
@@ -14,16 +14,20 @@ class ReviewController {
             const fileName = uuid.v4();
             
             const fileExtension = img.name.split('.').pop().toLowerCase();
-            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'bmp', 'tiff', 'webp', 'heic'];
 
             if (!allowedExtensions.includes(fileExtension)) {
-                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
+                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, bmp, tiff, webp, heic.');
             }
 
             let imageBuffer;
 
             if (fileExtension === 'heic') {
-                const { data, mimeType } = await convert({ buffer: img.data });
+                const { data } = await heicConvert({
+                    buffer: img.data,
+                    format: 'jpeg',
+                    quality: 90,
+                });
                 imageBuffer = data;
                 fileExtension = 'jpeg';
             } else {

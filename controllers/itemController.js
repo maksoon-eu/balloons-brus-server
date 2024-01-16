@@ -1,11 +1,11 @@
 const uuid = require('uuid');
-const sharp = require('sharp');
+const sharp = require('sharp11');
 const path = require('path');
 const fs = require('fs');
 const { Op } = require('sequelize');
 const {Item} = require('../models/models');
 const ApiError = require('../error/ApiError');
-const { convert } = require('heic-convert');
+const heicConvert = require('heic-convert');
 
 class ItemController {
     async create(req, res, next) {
@@ -26,7 +26,11 @@ class ItemController {
             let imageBuffer;
 
             if (fileExtension === 'heic') {
-                const { data, mimeType } = await convert({ buffer: img.data });
+                const { data } = await heicConvert({
+                    buffer: img.data,
+                    format: 'jpeg',
+                    quality: 90,
+                });
                 imageBuffer = data;
                 fileExtension = 'jpeg';
             } else {

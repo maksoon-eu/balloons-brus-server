@@ -1,10 +1,10 @@
 const {Work} = require('../models/models');
 const fs = require('fs');
 const uuid = require('uuid');
-const sharp = require('sharp');
+const sharp = require('sharp11');
 const path = require('path');
 const ApiError = require('../error/ApiError');
-const { convert } = require('heic-convert');
+const heicConvert = require('heic-convert');
 
 class WorkController {
     async create(req, res, next) {
@@ -23,7 +23,11 @@ class WorkController {
             let imageBuffer;
 
             if (fileExtension === 'heic') {
-                const { data, mimeType } = await convert({ buffer: img.data });
+                const { data } = await heicConvert({
+                    buffer: img.data,
+                    format: 'jpeg',
+                    quality: 90,
+                });
                 imageBuffer = data;
                 fileExtension = 'jpeg';
             } else {
