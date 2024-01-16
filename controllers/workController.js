@@ -1,10 +1,30 @@
 const {Work} = require('../models/models');
-const fs = require('fs');
 const uuid = require('uuid');
 const sharp = require('sharp');
-const path = require('path');
 const ApiError = require('../error/ApiError');
 const heicConvert = require('heic-convert');
+const AWS = require('aws-sdk');
+
+const s3 = new AWS.S3({
+    accessKeyId: process.env.ACCESS_KEY_ID,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
+    region: process.env.REGION,
+    endpoint: 'https://s3.timeweb.com',
+    s3ForcePathStyle: true
+})
+
+const uploadImageToS3 = async (imageBuffer, fileName) => {
+    const params = {
+        Bucket: process.env.BUCKET,
+        Key: fileName,
+        Body: imageBuffer,
+        ContentType: 'image/jpeg',
+        ACL: 'public-read',
+    };
+
+    const data = await s3.upload(params).promise();
+    return data.Location;
+};
 
 class WorkController {
     async create(req, res, next) {
@@ -37,7 +57,7 @@ class WorkController {
                     .toBuffer();
             }
 
-            fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
+            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
             const work = await Work.create({img: `${fileName}.${fileExtension}`})
 
@@ -60,7 +80,17 @@ class WorkController {
         const {id} = req.params
 
         const prevWork = await Work.findOne({where: {id}})
-        fs.unlinkSync(`${__dirname}/../static/${prevWork.img}`)
+        
+        const params = {
+            Bucket: process.env.BUCKET,
+            Key: prevWork.img,
+        };
+
+        try {
+            await s3.deleteObject(params).promise();
+        } catch (error) {
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
 
         const work = await Work.destroy({where: {id}})
         return res.json(work)

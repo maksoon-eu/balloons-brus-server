@@ -1,11 +1,31 @@
 const uuid = require('uuid');
 const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
 const { Op } = require('sequelize');
 const {Item} = require('../models/models');
 const ApiError = require('../error/ApiError');
 const heicConvert = require('heic-convert');
+const AWS = require('aws-sdk');
+
+const s3 = new AWS.S3({
+    accessKeyId: process.env.ACCESS_KEY_ID,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
+    region: process.env.REGION,
+    endpoint: 'https://s3.timeweb.com',
+    s3ForcePathStyle: true
+})
+
+const uploadImageToS3 = async (imageBuffer, fileName) => {
+    const params = {
+        Bucket: process.env.BUCKET,
+        Key: fileName,
+        Body: imageBuffer,
+        ContentType: 'image/jpeg',
+        ACL: 'public-read',
+    };
+
+    const data = await s3.upload(params).promise();
+    return data.Location;
+};
 
 class ItemController {
     async create(req, res, next) {
@@ -41,6 +61,8 @@ class ItemController {
                 fileExtension = 'jpeg';
             }
 
+            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
+
             const item = await Item.create({
                 name,
                 price,
@@ -49,8 +71,6 @@ class ItemController {
                 subTypeId,
                 img: `${fileName}.${fileExtension}`,
             });
-
-            fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
 
             return res.json(item)
         } catch(e) {
@@ -109,7 +129,17 @@ class ItemController {
 
             let item;
             if (req.files) {
-                fs.unlinkSync(`${__dirname}/../static/${prevItem.img}`)
+                const params = {
+                    Bucket: process.env.BUCKET,
+                    Key: prevItem.img,
+                };
+        
+                try {
+                    await s3.deleteObject(params).promise();
+                } catch (error) {
+                    return res.status(500).json({ error: 'Internal Server Error' });
+                }
+
                 const {img} = req.files
                 
                 const fileName = uuid.v4();
@@ -139,9 +169,9 @@ class ItemController {
                     fileExtension = 'jpeg';
                 }
 
+                const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
+
                 item = await Item.update({...req.body, img: `${fileName}.${fileExtension}`}, {where: {id}})
-                
-                fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
             } else {
                 item = await Item.update({...req.body}, {where: {id}})
             }
@@ -156,7 +186,17 @@ class ItemController {
         const {id} = req.params
 
         const prevItem = await Item.findOne({where: {id}})
-        fs.unlinkSync(`${__dirname}/../static/${prevItem.img}`)
+        
+        const params = {
+            Bucket: process.env.BUCKET,
+            Key: prevItem.img,
+        };
+
+        try {
+            await s3.deleteObject(params).promise();
+        } catch (error) {
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
         
         const item = await Item.destroy({where: {id}})
         return res.json(item)

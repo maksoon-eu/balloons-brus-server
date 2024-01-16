@@ -1,10 +1,30 @@
 const {Slider} = require('../models/models');
-const fs = require('fs');
 const uuid = require('uuid');
 const sharp = require('sharp');
-const path = require('path');
 const ApiError = require('../error/ApiError');
 const heicConvert = require('heic-convert');
+const AWS = require('aws-sdk');
+
+const s3 = new AWS.S3({
+    accessKeyId: process.env.ACCESS_KEY_ID,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
+    region: process.env.REGION,
+    endpoint: 'https://s3.timeweb.com',
+    s3ForcePathStyle: true
+})
+
+const uploadImageToS3 = async (imageBuffer, fileName) => {
+    const params = {
+        Bucket: process.env.BUCKET,
+        Key: fileName,
+        Body: imageBuffer,
+        ContentType: 'image/jpeg',
+        ACL: 'public-read',
+    };
+
+    const data = await s3.upload(params).promise();
+    return data.Location;
+};
 
 class SliderController {
     async create(req, res, next) {
@@ -37,7 +57,7 @@ class SliderController {
                     .toBuffer();
             }
 
-            fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
+            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
             const slider = await Slider.create({img: `${fileName}.${fileExtension}`})
 
@@ -58,7 +78,17 @@ class SliderController {
 
             const prevSlider = await Slider.findOne({where: {id}})
 
-            fs.unlinkSync(`${__dirname}/../static/${prevSlider.img}`)
+            const params = {
+                Bucket: process.env.BUCKET,
+                Key: prevSlider.img,
+            };
+    
+            try {
+                await s3.deleteObject(params).promise();
+            } catch (error) {
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+
             const {img} = req.files
             
             const fileName = uuid.v4();
@@ -87,10 +117,10 @@ class SliderController {
                     .toBuffer();
                 fileExtension = 'jpeg';
             }
+            
+            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
             const slider = await Slider.update({img: `${fileName}.${fileExtension}`}, {where: {id}})
-            
-            fs.writeFileSync(path.resolve(__dirname, '..', 'static', `${fileName}.${fileExtension}`), imageBuffer);
 
             return res.json(slider)
         } catch(e) {
