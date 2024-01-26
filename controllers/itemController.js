@@ -68,7 +68,7 @@ class ItemController {
                 price,
                 description,
                 typeId,
-                subTypeId,
+                subTypeId: JSON.parse(subTypeId),
                 img: `${fileName}.${fileExtension}`,
             });
 
@@ -79,33 +79,46 @@ class ItemController {
         }
     }
 
-    async getAll(req, res) {
-        let {typeId, subTypeId, price, limit, page, sort} = req.query
-        page = page || 1
-        limit = limit || 5
-        sort = sort || ["updatedAt", "DESC"]
-        let offset = page * limit - limit
-        let items;
-        if (typeId && subTypeId && price) {
-            items = await Item.findAndCountAll({
-                where : {typeId, subTypeId, 
-                    price: {[Op.between]: [+price.priceLow, +price.priceMax]}
-                }, 
-                limit, offset, 
-                order: [sort]
-            })
-        } else if (typeId && subTypeId) {
-            items = await Item.findAndCountAll({where : {typeId, subTypeId}, limit, offset, order: [sort]})
-        } else if (price) {
-            items = await Item.findAndCountAll({
-                where : {price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset, 
-                order: [sort]
-            })
-        } else {
-            items = await Item.findAndCountAll({limit, offset, order: [sort]})
-        }
+    async getAll(req, res, next) {
+        try {
+            let {typeId, subTypeId, price, limit, page, sort} = req.query
+            page = page || 1
+            limit = limit || 5
+            sort = sort || ["updatedAt", "DESC"]
+            let offset = page * limit - limit
+            let items;
+            if (typeId && subTypeId && price) {
+                items = await Item.findAndCountAll({
+                    where : {
+                        typeId, 
+                        subTypeId: {[Op.contains]: [+subTypeId]},
+                        price: {[Op.between]: [+price.priceLow, +price.priceMax]}
+                    }, 
+                    limit, offset,
+                    order: [sort]
+                })
+            } else if (typeId && subTypeId) {
+                items = await Item.findAndCountAll({
+                    where : {
+                        typeId, 
+                        subTypeId: {[Op.contains]: [+subTypeId]}
+                    }, 
+                    limit, offset, 
+                    order: [sort]})
+            } else if (price) {
+                items = await Item.findAndCountAll({
+                    where : {price: {[Op.between]: [+price.priceLow, +price.priceMax]}}, limit, offset, 
+                    order: [sort]
+                })
+            } else {
+                items = await Item.findAndCountAll({limit, offset, order: [sort]})
+            }
 
-        return res.json(items)
+            return res.json(items)
+        } catch(e) {
+            console.log(e)
+            next(ApiError.badRequest(e.message))
+        }
     }
 
     async getForIds(req, res) {

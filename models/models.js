@@ -9,7 +9,7 @@ const Item = sequelize.define('item', {
     description: {type: DataTypes.STRING},
     typeId: {type: DataTypes.INTEGER, allowNull: false},
     available: {type: DataTypes.BOOLEAN, defaultValue: true},
-    subTypeId: {type: DataTypes.INTEGER, allowNull: false}
+    subTypeId: {type: DataTypes.ARRAY(DataTypes.INTEGER), allowNull: false}
 });
 
 const Type = sequelize.define('type', {
