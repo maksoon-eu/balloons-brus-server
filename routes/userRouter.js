@@ -6,6 +6,7 @@ const checkRoleMiddleware = require('../middleware/checkRoleMiddleware')
 const authMiddleware = require('../middleware/authMiddleware')
 
 router.post('/registration', checkRoleMiddleware('ADMIN'), userController.registration)
+router.put('/change', checkRoleMiddleware('ADMIN'), userController.change)
 router.post('/login', userController.login)
 router.get('/auth', authMiddleware, userController.check)
 

@@ -1,8 +1,8 @@
 const {Slider} = require('../models/models');
 const uuid = require('uuid');
-const sharp = require('sharp');
 const ApiError = require('../error/ApiError');
-const heicConvert = require('heic-convert');
+const { createImgUtils } = require('../utils/createImgUtils');
+const { changeRotateUtils } = require('../utils/changeRotateUtils');
 const AWS = require('aws-sdk');
 
 const s3 = new AWS.S3({
@@ -13,51 +13,21 @@ const s3 = new AWS.S3({
     s3ForcePathStyle: true
 })
 
-const uploadImageToS3 = async (imageBuffer, fileName) => {
-    const params = {
-        Bucket: process.env.BUCKET,
-        Key: fileName,
-        Body: imageBuffer,
-        ContentType: 'image/jpeg',
-        ACL: 'public-read',
-    };
-
-    const data = await s3.upload(params).promise();
-    return data.Location;
-};
-
 class SliderController {
     async create(req, res, next) {
         try {
             const {img} = req.files
+            let {rotate} = req.query
+            rotate = parseInt(rotate, 10);
 
             const fileName = uuid.v4();
             
-            const fileExtension = img.name.split('.').pop().toLowerCase();
-            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
-
-            if (!allowedExtensions.includes(fileExtension)) {
-                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
-            }
-
-            let imageBuffer;
-
-            if (fileExtension === 'heic') {
-                const { data } = await heicConvert({
-                    buffer: img.data,
-                    format: 'jpeg',
-                    quality: 90,
-                });
-                imageBuffer = data;
-                fileExtension = 'jpeg';
+            let fileExtension;
+            if (rotate > 0) {
+                fileExtension = await createImgUtils(img, fileName, rotate);
             } else {
-                imageBuffer = await sharp(img.data)
-                    .toFormat('jpeg')
-                    .jpeg({ quality: 90 })
-                    .toBuffer();
+                fileExtension = await createImgUtils(img, fileName);
             }
-
-            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
             const slider = await Slider.create({img: `${fileName}.${fileExtension}`})
 
@@ -75,54 +45,40 @@ class SliderController {
     async change(req, res, next) {
         try {
             const {id} = req.params
+            let {rotate} = req.query
+            rotate = parseInt(rotate, 10);
 
             const prevSlider = await Slider.findOne({where: {id}})
 
-            const params = {
-                Bucket: process.env.BUCKET,
-                Key: prevSlider.img,
-            };
-    
-            try {
+            if (rotate > 0 && !req.files) {
+                await changeRotateUtils(rotate, prevSlider)
+            }
+
+            if (req.files) {
+                const params = {
+                    Bucket: process.env.BUCKET,
+                    Key: prevSlider.img,
+                };
+
                 await s3.deleteObject(params).promise();
-            } catch (error) {
-                return res.status(500).json({ error: 'Internal Server Error' });
+
+                const {img} = req.files
+
+                const fileName = uuid.v4();
+
+                let fileExtension;
+                if (rotate > 0) {
+                    fileExtension = await createImgUtils(img, fileName, rotate);
+                } else {
+                    fileExtension = await createImgUtils(img, fileName);
+                }
+
+                const slider = await Slider.update({img: `${fileName}.${fileExtension}`}, {where: {id}})
+
+                return res.json(slider)
             }
 
-            const {img} = req.files
-            
-            const fileName = uuid.v4();
-        
-            let fileExtension = img.name.split('.').pop().toLowerCase();
-            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
-
-            if (!allowedExtensions.includes(fileExtension)) {
-                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
-            }
-
-            let imageBuffer;
-
-            if (fileExtension === 'heic') {
-                const { data } = await heicConvert({
-                    buffer: img.data,
-                    format: 'jpeg',
-                    quality: 90,
-                });
-                imageBuffer = data;
-                fileExtension = 'jpeg';
-            } else {
-                imageBuffer = await sharp(img.data)
-                    .toFormat('jpeg')
-                    .jpeg({ quality: 90 })
-                    .toBuffer();
-                fileExtension = 'jpeg';
-            }
-            
-            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
-
-            const slider = await Slider.update({img: `${fileName}.${fileExtension}`}, {where: {id}})
-
-            return res.json(slider)
+            return res.json(prevSlider)
         } catch(e) {
             next(ApiError.badRequest(e.message))
         }

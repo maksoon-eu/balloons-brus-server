@@ -44,6 +44,21 @@ class UserController {
         return res.json({token})
     }
 
+    async change(req, res, next) {
+        const {login, password} = req.body
+        if (!password) {
+            return next(ApiError.badRequest('Некорректный пароль'))
+        }
+        const prevUser = await User.findOne({where:{login}})
+        if (!prevUser) {
+            return next(ApiError.badRequest('Пользователя с таким логином не существует'))
+        }
+        const hashPassword = await bcrypt.hash(password, 5)
+        const user = await User.update({password: hashPassword}, {where:{login}})
+        const token = generateToken(user.id, user.login, user.role)
+        return res.json({token})
+    }
+
     async check(req, res) {
         const token = generateToken(req.user.id, req.user.login, req.user.role)
         return res.json({token})

@@ -1,8 +1,8 @@
 const {Review} = require('../models/models');
 const uuid = require('uuid');
-const sharp = require('sharp');
-const heicConvert = require('heic-convert');
 const ApiError = require('../error/ApiError');
+const { createImgUtils } = require('../utils/createImgUtils');
+const { changeRotateUtils } = require('../utils/changeRotateUtils');
 const AWS = require('aws-sdk');
 
 const s3 = new AWS.S3({
@@ -13,51 +13,21 @@ const s3 = new AWS.S3({
     s3ForcePathStyle: true
 })
 
-const uploadImageToS3 = async (imageBuffer, fileName) => {
-    const params = {
-        Bucket: process.env.BUCKET,
-        Key: fileName,
-        Body: imageBuffer,
-        ContentType: 'image/jpeg',
-        ACL: 'public-read',
-    };
-
-    const data = await s3.upload(params).promise();
-    return data.Location;
-};
-
 class ReviewController {
     async create(req, res, next) {
         try {
             const {img} = req.files
+            let {rotate} = req.query
+            rotate = parseInt(rotate, 10);
 
             const fileName = uuid.v4();
             
-            const fileExtension = img.name.split('.').pop().toLowerCase();
-            const allowedExtensions = ['jpg', 'jpeg', 'png', 'bmp', 'tiff', 'webp', 'heic'];
-
-            if (!allowedExtensions.includes(fileExtension)) {
-                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, bmp, tiff, webp, heic.');
-            }
-
-            let imageBuffer;
-
-            if (fileExtension === 'heic') {
-                const { data } = await heicConvert({
-                    buffer: img.data,
-                    format: 'jpeg',
-                    quality: 90,
-                });
-                imageBuffer = data;
-                fileExtension = 'jpeg';
+            let fileExtension;
+            if (rotate > 0) {
+                fileExtension = await createImgUtils(img, fileName, rotate);
             } else {
-                imageBuffer = await sharp(img.data)
-                    .toFormat('jpeg')
-                    .jpeg({ quality: 90 })
-                    .toBuffer();
+                fileExtension = await createImgUtils(img, fileName);
             }
-
-            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
             const review = await Review.create({img: `${fileName}.${fileExtension}`})
 
@@ -69,11 +39,53 @@ class ReviewController {
 
     async getAll(req, res) {
         let page = 1
-        let limit = 8
+        let limit = 16
         let offset = page * limit - limit
 
         const reviews = await Review.findAll({limit, offset})
         return res.json(reviews)
+    }
+
+    async change(req, res, next) {
+        try {
+            const {id} = req.params
+            let {rotate} = req.query
+            rotate = parseInt(rotate, 10);
+
+            const prevReview = await Review.findOne({where: {id}})
+
+            if (rotate > 0 && !req.files) {
+                await changeRotateUtils(rotate, prevReview)
+            }
+
+            if (req.files) {
+                const params = {
+                    Bucket: process.env.BUCKET,
+                    Key: prevReview.img,
+                };
+
+                await s3.deleteObject(params).promise();
+
+                const {img} = req.files
+                
+                const fileName = uuid.v4();
+
+                let fileExtension;
+                if (rotate > 0) {
+                    fileExtension = await createImgUtils(img, fileName, rotate);
+                } else {
+                    fileExtension = await createImgUtils(img, fileName);
+                }
+
+                const review = await Review.update({img: `${fileName}.${fileExtension}`}, {where: {id}})
+
+                return res.json(review)
+            }
+
+            return res.json(prevReview)
+        } catch(e) {
+            next(ApiError.badRequest(e.message))
+        }
     }
 
     async delete(req, res) {
@@ -86,11 +98,7 @@ class ReviewController {
             Key: prevReview.img,
         };
 
-        try {
-            await s3.deleteObject(params).promise();
-        } catch (error) {
-            return res.status(500).json({ error: 'Internal Server Error' });
-        }
+        await s3.deleteObject(params).promise();
 
         const review = await Review.destroy({where: {id}})
         return res.json(review)

@@ -1,9 +1,9 @@
 const uuid = require('uuid');
-const sharp = require('sharp');
 const { Op } = require('sequelize');
 const {Item} = require('../models/models');
 const ApiError = require('../error/ApiError');
-const heicConvert = require('heic-convert');
+const { createImgUtils } = require('../utils/createImgUtils');
+const { changeRotateUtils } = require('../utils/changeRotateUtils');
 const AWS = require('aws-sdk');
 
 const s3 = new AWS.S3({
@@ -14,54 +14,22 @@ const s3 = new AWS.S3({
     s3ForcePathStyle: true
 })
 
-const uploadImageToS3 = async (imageBuffer, fileName) => {
-    const params = {
-        Bucket: process.env.BUCKET,
-        Key: fileName,
-        Body: imageBuffer,
-        ContentType: 'image/jpeg',
-        ACL: 'public-read',
-    };
-
-    const data = await s3.upload(params).promise();
-    return data.Location;
-};
-
 class ItemController {
     async create(req, res, next) {
         try {
             const {name, price, description, typeId, subTypeId} = req.body
-
             const {img} = req.files
-            
+            let {rotate} = req.query
+            rotate = parseInt(rotate, 10);
+
             const fileName = uuid.v4();
             
-            let fileExtension = img.name.split('.').pop().toLowerCase();
-            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
-
-            if (!allowedExtensions.includes(fileExtension)) {
-                throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
-            }
-
-            let imageBuffer;
-
-            if (fileExtension === 'heic') {
-                const { data } = await heicConvert({
-                    buffer: img.data,
-                    format: 'jpeg',
-                    quality: 90,
-                });
-                imageBuffer = data;
-                fileExtension = 'jpeg';
+            let fileExtension;
+            if (rotate > 0) {
+                fileExtension = await createImgUtils(img, fileName, rotate);
             } else {
-                imageBuffer = await sharp(img.data)
-                    .toFormat('jpeg')
-                    .jpeg({ quality: 90 })
-                    .toBuffer();
-                fileExtension = 'jpeg';
+                fileExtension = await createImgUtils(img, fileName);
             }
-
-            const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
             const item = await Item.create({
                 name,
@@ -74,8 +42,8 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            console.log(e)
-            next(ApiError.badRequest(e.message))
+            console.log(e.message)
+            next(ApiError.badRequest(e.errors ? e.errors[0].message : e.message))
         }
     }
 
@@ -137,8 +105,14 @@ class ItemController {
     async change(req, res, next) {
         try {
             const {id} = req.params
+            let {rotate} = req.query
+            rotate = parseInt(rotate, 10);
 
             const prevItem = await Item.findOne({where: {id}})
+
+            if (rotate > 0 && !req.files) {
+                await changeRotateUtils(rotate, prevItem)
+            }
 
             let item;
             if (req.files) {
@@ -146,43 +120,19 @@ class ItemController {
                     Bucket: process.env.BUCKET,
                     Key: prevItem.img,
                 };
-        
-                try {
-                    await s3.deleteObject(params).promise();
-                } catch (error) {
-                    return res.status(500).json({ error: 'Internal Server Error' });
-                }
+
+                await s3.deleteObject(params).promise();
 
                 const {img} = req.files
                 
                 const fileName = uuid.v4();
-            
-                let fileExtension = img.name.split('.').pop().toLowerCase();
-                const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
 
-                if (!allowedExtensions.includes(fileExtension)) {
-                    throw new Error('Недопустимый формат изображения. Разрешены: jpg, jpeg, png, gif, bmp, tiff, webp, heic.');
-                }
-
-                let imageBuffer;
-
-                if (fileExtension === 'heic') {
-                    const { data } = await heicConvert({
-                        buffer: img.data,
-                        format: 'jpeg',
-                        quality: 90,
-                    });
-                    imageBuffer = data;
-                    fileExtension = 'jpeg';
+                let fileExtension;
+                if (rotate > 0) {
+                    fileExtension = await createImgUtils(img, fileName, rotate);
                 } else {
-                    imageBuffer = await sharp(img.data)
-                        .toFormat('jpeg')
-                        .jpeg({ quality: 90 })
-                        .toBuffer();
-                    fileExtension = 'jpeg';
+                    fileExtension = await createImgUtils(img, fileName);
                 }
-
-                const imgS3 = await uploadImageToS3(imageBuffer, `${fileName}.${fileExtension}`);
 
                 item = await Item.update({...req.body, img: `${fileName}.${fileExtension}`}, {where: {id}})
             } else {
@@ -191,6 +141,7 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
+            console.log(e.message)
             next(ApiError.badRequest(e.message))
         }
     }
@@ -205,11 +156,7 @@ class ItemController {
             Key: prevItem.img,
         };
 
-        try {
-            await s3.deleteObject(params).promise();
-        } catch (error) {
-            return res.status(500).json({ error: 'Internal Server Error' });
-        }
+        await s3.deleteObject(params).promise();
         
         const item = await Item.destroy({where: {id}})
         return res.json(item)
