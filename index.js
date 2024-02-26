@@ -1,15 +1,15 @@
-require('dotenv').config()
-const rateLimit = require('express-rate-limit')
-const helmet = require('helmet')
-const express = require('express')
-const sequelize = require('./db')
-const cors = require('cors')
-const fileUpload = require('express-fileupload')
-const router = require('./routes/index')
-const errorHandler = require('./middleware/ErrorHandingMiddleware')
-const path = require('path')
-const fs = require('fs')
-const https = require('https')
+require('dotenv').config();
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const express = require('express');
+const sequelize = require('./db');
+const cors = require('cors');
+const fileUpload = require('express-fileupload');
+const router = require('./routes/index');
+const errorHandler = require('./middleware/ErrorHandingMiddleware');
+const path = require('path');
+const fs = require('fs');
+const https = require('https');
 
 const PORT = process.env.PORT || 5001
 
