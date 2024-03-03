@@ -34,7 +34,7 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            console.log(e.message)
+            console.log(e)
             next(ApiError.badRequest(e.errors ? e.errors[0].message : e.message))
         }
     }

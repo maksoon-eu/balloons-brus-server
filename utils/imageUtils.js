@@ -9,8 +9,7 @@ const uploadImageToS3 = async (imageBuffer, fileName) => {
         ACL: 'public-read',
     };
 
-    const data = await s3.upload(params).promise();
-    return data.Location;
+    await s3.upload(params).promise();
 };
 
 module.exports = { uploadImageToS3 };
