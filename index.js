@@ -35,17 +35,13 @@ app.use('/api', router)
 
 app.use(errorHandler)
 
-app.use((err, req, res, next) => {
-    fs.appendFileSync(path.join(__dirname, 'error.log'), `${new Date().toISOString()} - ${err.stack}\n`);
-});
-
 const httpsServer = https.createServer(options, app);
 
 const start = async () => {
     try {
         await sequelize.authenticate()
         await sequelize.sync()
-        httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`))
+        app.listen(PORT, () => console.log(`Server started on port ${PORT}`))
     } catch (e) {
         console.log(e)
     }
