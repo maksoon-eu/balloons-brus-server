@@ -24,6 +24,8 @@ module.exports = function(duration) {
                 }
                 next()
             }
+        } else {
+            next()
         }
     }
 }
