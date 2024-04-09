@@ -11,8 +11,14 @@ module.exports = function(duration) {
         
         let decoded;
         if (token && token !== 'null') {
-            decoded = jwt.verify(token, process.env.SECRET_KEY)
+            try {
+                decoded = jwt.verify(token, process.env.SECRET_KEY);
+            } catch (e) {
+                ApiError.badRequest(e.message)
+                decoded = null;
+            }
         }
+
         if (!decoded || decoded.role !== "ADMIN") {
             if (cacheResponse) {
                 res.send(cacheResponse)

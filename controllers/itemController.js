@@ -34,7 +34,6 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            console.log(e)
             next(ApiError.badRequest(e.errors ? e.errors[0].message : e.message))
         }
     }
@@ -76,7 +75,6 @@ class ItemController {
 
             return res.json(items)
         } catch(e) {
-            console.log(e)
             next(ApiError.badRequest(e.message))
         }
     }
@@ -133,7 +131,6 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            console.log(e.message)
             next(ApiError.badRequest(e.message))
         }
     }

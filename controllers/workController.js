@@ -76,7 +76,6 @@ class WorkController {
 
             return res.json(prevWork)
         } catch(e) {
-            console.log(e)
             next(ApiError.badRequest(e.message))
         }
     }
