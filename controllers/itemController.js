@@ -22,7 +22,7 @@ class ItemController {
             } else {
                 fileExtension = await createImgUtils(img, fileName);
             }
-
+            
             const item = await Item.create({
                 name,
                 price,
@@ -34,7 +34,7 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            next(ApiError.badRequest(e.errors ? e.errors[0].message : e.message))
+            next(ApiError.internal(e.errors ? e.errors[0].message : e.message))
         }
     }
 
@@ -75,7 +75,7 @@ class ItemController {
 
             return res.json(items)
         } catch(e) {
-            next(ApiError.badRequest(e.message))
+            next(ApiError.internal(e.errors ? e.errors[0].message : e.message))
         }
     }
 
@@ -131,7 +131,7 @@ class ItemController {
 
             return res.json(item)
         } catch(e) {
-            next(ApiError.badRequest(e.message))
+            next(ApiError.internal(e.errors ? e.errors[0].message : e.message))
         }
     }
 
