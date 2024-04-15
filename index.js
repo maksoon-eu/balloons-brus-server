@@ -21,9 +21,9 @@ const limiter = rateLimit({
 })
 
 const options = {
-    key: fs.readFileSync(path.resolve(__dirname,('sslcert/key.pem'))),
-    cert: fs.readFileSync(path.resolve(__dirname,('sslcert/fullchain.pem')))
-}
+    key: fs.readFileSync('../etc/letsencrypt/live/api.sharyotbrusa.ru/privkey.pem'),
+    cert: fs.readFileSync('../etc/letsencrypt/live/api.sharyotbrusa.ru/fullchain.pem'),
+};
 
 const app = express()
 app.use(helmet());
