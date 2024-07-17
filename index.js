@@ -20,10 +20,10 @@ const limiter = rateLimit({
 	legacyHeaders: false
 })
 
-// const options = {
-//     key: fs.readFileSync('../etc/letsencrypt/live/api.sharyotbrusa.ru/privkey.pem'),
-//     cert: fs.readFileSync('../etc/letsencrypt/live/api.sharyotbrusa.ru/fullchain.pem'),
-// };
+const options = {
+    key: fs.readFileSync('../etc/letsencrypt/live/api.sharyotbrusa.ru/privkey.pem'),
+    cert: fs.readFileSync('../etc/letsencrypt/live/api.sharyotbrusa.ru/fullchain.pem'),
+};
 
 const app = express()
 app.use(helmet());
@@ -35,13 +35,13 @@ app.use('/api', router)
 
 app.use(errorHandler)
 
-// const httpsServer = https.createServer(options, app);
+const httpsServer = https.createServer(options, app);
 
 const start = async () => {
     try {
         await sequelize.authenticate()
         await sequelize.sync()
-        app.listen(PORT, () => console.log(`Server started on port ${PORT}`))
+        httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`))
     } catch (e) {
         console.error(e)
     }
